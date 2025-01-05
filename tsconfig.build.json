@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "outDir": "./out.dev",
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "sourceMap": true,
+    "useUnknownInCatchVariables": true,
+    "useDefineForClassFields": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true
+  },
+  "include": [
+    "./src",
+  ]
+}

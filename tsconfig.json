@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.build.json",
+  "include": [
+    "./src",
+    "./tests",
+    "./scripts",
+    "./.eslintrc.js",
+    "./vitest.config.ts",
+    "./rollup.config.mjs"
+  ]
+}

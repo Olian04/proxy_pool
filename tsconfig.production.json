@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "outDir": "./out.prod",
+    "sourceMap": false,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false
+  },
+  "exclude": [
+    "./package.json"
+  ]
+}
