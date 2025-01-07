@@ -7,6 +7,60 @@ type Ctx<T> = {
   isFree: boolean;
 };
 
+export enum PruneStrategy {
+  /**
+   * Will prune the pool on a fixed interval, given that the pool is at capacity.
+   */
+  ON_FIXED_INTERVAL = 'onFixedInterval',
+
+  /**
+   * Will prune the pool when a proxy is released and the free threshold is reached.
+   */
+  ON_USAGE_THRESHOLD = 'onUsageThreshold',
+
+  /**
+   * Will not prune the pool automatically.
+   * The pool must be manually pruned by calling the `prune` method.
+   */
+  MANUAL = 'manual',
+}
+
+type PruneConfig =
+  | {
+      strategy: PruneStrategy.ON_FIXED_INTERVAL;
+
+      /**
+       * Amount of time in milliseconds between each prune attempt.
+       */
+      intervalMs: number;
+
+      /**
+       * The percentage of the pool that must be free for the pool to commence with the prune.
+       */
+      graceThreshold: number;
+    }
+  | {
+      strategy: PruneStrategy.ON_USAGE_THRESHOLD;
+
+      /**
+       * The percentage of the pool that must be free before the pool will attempt a prune.
+       */
+      threshold: number;
+
+      /**
+       * Amount of time in milliseconds the pool will wait before commencing the prune.
+       * Any usage of the pool that crosses the threshold during this period will abort the prune.
+       */
+      gracePeriodMs: number;
+    }
+  | {
+      /**
+       * Will not prune the pool automatically.
+       * The pool must be manually pruned by calling the `prune` method.
+       */
+      strategy: PruneStrategy.MANUAL;
+    };
+
 export class ProxyPool<
   V extends Record<string | number | symbol, unknown>,
   T extends unknown[],
@@ -21,33 +75,39 @@ export class ProxyPool<
     initialSize: number;
     maxSize: number;
     growthFactor: number;
-    pruneThreshold: number;
+    prune: PruneConfig;
   };
 
   constructor(
     accessors: {
-      get: (...args: [...T, K]) => V[K];
-      set: (...args: [...T, K, V[K]]) => boolean;
+      get: (...args: [...T, key: K]) => V[K];
+      set: (...args: [...T, key: K, value: V[K]]) => boolean;
     },
     config?: {
       initialSize?: number;
       maxSize?: number;
       growthFactor?: number;
-      pruneThreshold?: number;
+      prune?: PruneConfig;
     }
   ) {
     const {
       initialSize = 1000,
       maxSize = Infinity,
-      growthFactor = 0.2,
-      pruneThreshold = 0.75,
+      growthFactor = 2,
+      prune = {
+        strategy: PruneStrategy.ON_FIXED_INTERVAL,
+        intervalMs: 1000,
+        graceThreshold: 0.5,
+      },
     } = config || {};
     this.config = {
       initialSize,
       maxSize,
       growthFactor,
-      pruneThreshold,
+      prune,
     };
+
+    this.validateConfig();
 
     this.accessors = {
       get: (ctx, key) => accessors.get.call(null, ...ctx.data, key as K),
@@ -55,6 +115,39 @@ export class ProxyPool<
         accessors.set.call(null, ...ctx.data, key as K, value),
     };
     this.reset();
+  }
+
+  private validateConfig() {
+    if (this.config.initialSize <= 0) {
+      throw new Error('Initial size must be greater than or equal to 0');
+    }
+    if (
+      this.config.maxSize < 0 ||
+      this.config.maxSize <= this.config.initialSize
+    ) {
+      throw new Error(
+        'Max size must be greater than or equal to initial size and can not be zero'
+      );
+    }
+    if (this.config.growthFactor < 0) {
+      throw new Error('Growth factor must be greater than 0');
+    }
+    if (this.config.prune.strategy === PruneStrategy.ON_USAGE_THRESHOLD) {
+      if (this.config.prune.threshold < 0) {
+        throw new Error('Prune threshold must be greater than 0');
+      }
+      if (this.config.prune.gracePeriodMs < 0) {
+        throw new Error('Grace period must be greater than 0');
+      }
+    }
+    if (this.config.prune.strategy === PruneStrategy.ON_FIXED_INTERVAL) {
+      if (this.config.prune.intervalMs < 0) {
+        throw new Error('Interval must be greater than 0');
+      }
+      if (this.config.prune.graceThreshold < 0) {
+        throw new Error('Grace threshold must be greater than 0');
+      }
+    }
   }
 
   private reset() {
