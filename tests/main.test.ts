@@ -36,6 +36,25 @@ describe('ProxyPool', () => {
     expect(obj.foo).toBe(20);
   });
 
+  it('should be able to accept multiple arguments', ({ expect }) => {
+    const pool = new ProxyPool<
+      Record<string, number>,
+      [ctx: { foo: number }, num: number]
+    >(
+      {
+        set: () => false,
+        get: (data, num, key) => data.foo * num,
+      },
+      {
+        initialSize: 1,
+      }
+    );
+
+    const obj = pool.get({ foo: 10 }, 2);
+    expect(obj).toBeDefined();
+    expect(obj.foo).toBe(20);
+  });
+
   it('should grow the pool', ({ expect }) => {
     const pool = new ProxyPool<Record<number, number>, [ctx: { foo: number }]>(
       {
