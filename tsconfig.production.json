@@ -1,8 +1,10 @@
 {
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "outDir": "./out.prod",
-    "sourceMap": false,
+    "outDir": "./dist",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false
   },

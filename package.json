@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": false,
   "description": "An object pool specifically for proxies",
-  "main": "dist/proxy-pool.js",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
   "keywords": [
     "object",
     "pool",
@@ -17,19 +18,14 @@
   },
   "scripts": {
     "build:dev": "rm -rf ./out.dev && tsc --project ./tsconfig.build.json",
-    "build:prod": "rm -rf ./out.prod && tsc --project ./tsconfig.production.json && rm -rf ./dist && rollup --config",
+    "build:prod": "rm -rf ./dist && tsc --project ./tsconfig.production.json",
     "test": "npm run build:dev && vitest run ./tests/",
     "perf:time": "npm run build:dev && node -r ts-node/register --expose-gc performance/time.ts",
     "prepublishOnly": "npm run build:prod"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^28.0.2",
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.0",
-    "@rollup/plugin-terser": "^0.4.4",
-    "rollup": "^4.29.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "ts-node": "^10.9.2"
+    "vitest": "^2.1.8"
   }
 }
