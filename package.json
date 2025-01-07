@@ -1,6 +1,7 @@
 {
-  "name": "proxy_pool",
-  "version": "0.1.0",
+  "name": "@olian04/proxy_pool",
+  "version": "1.0.0",
+  "private": false,
   "description": "An object pool specifically for proxies",
   "main": "dist/proxy-pool.js",
   "keywords": [
@@ -11,13 +12,15 @@
   "author": "olian04",
   "license": "MIT",
   "directories": {
-    "test": "tests"
+    "test": "tests",
+    "src": "src"
   },
   "scripts": {
     "build:dev": "rm -rf ./out.dev && tsc --project ./tsconfig.build.json",
     "build:prod": "rm -rf ./out.prod && tsc --project ./tsconfig.production.json && rm -rf ./dist && rollup --config",
     "test": "npm run build:dev && vitest run ./tests/",
-    "perf:time": "npm run build:dev && node -r ts-node/register --expose-gc performance/time.ts"
+    "perf:time": "npm run build:dev && node -r ts-node/register --expose-gc performance/time.ts",
+    "prepublishOnly": "npm run build:prod"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.2",

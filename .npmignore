@@ -1,0 +1,10 @@
+performance/
+out.dev/
+out.prod/
+node_modules/
+tests/
+rollup.config.mjs
+vitest.config.ts
+tsconfig.json
+tsconfig.build.json
+tsconfig.production.json
