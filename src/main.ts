@@ -66,7 +66,7 @@ const intervalCleanupRegistry = new FinalizationRegistry<NodeJS.Timeout>(
 );
 
 export class ProxyPool<
-  V extends Record<string | number | symbol, unknown>,
+  V extends object,
   T extends unknown[],
   K extends keyof V = keyof V
 > {
