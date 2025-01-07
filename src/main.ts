@@ -61,6 +61,10 @@ type PruneConfig =
       strategy: PruneStrategy.MANUAL;
     };
 
+const intervalCleanupRegistry = new FinalizationRegistry<NodeJS.Timeout>(
+  clearInterval
+);
+
 export class ProxyPool<
   V extends Record<string | number | symbol, unknown>,
   T extends unknown[],
@@ -77,6 +81,7 @@ export class ProxyPool<
     growthFactor: number;
     prune: PruneConfig;
   };
+  private pruneGracePeriodTimeout: NodeJS.Timeout | null = null;
 
   constructor(
     accessors: {
@@ -93,11 +98,9 @@ export class ProxyPool<
     const {
       initialSize = 1000,
       maxSize = Infinity,
-      growthFactor = 2,
+      growthFactor = 0.2,
       prune = {
-        strategy: PruneStrategy.ON_FIXED_INTERVAL,
-        intervalMs: 1000,
-        graceThreshold: 0.5,
+        strategy: PruneStrategy.MANUAL,
       },
     } = config || {};
     this.config = {
@@ -114,7 +117,15 @@ export class ProxyPool<
       set: (ctx, key, value) =>
         accessors.set.call(null, ...ctx.data, key as K, value),
     };
+
     this.reset();
+
+    if (this.config.prune.strategy === PruneStrategy.ON_FIXED_INTERVAL) {
+      intervalCleanupRegistry.register(
+        this,
+        setInterval(() => this._prune(), this.config.prune.intervalMs)
+      );
+    }
   }
 
   private validateConfig() {
@@ -181,7 +192,7 @@ export class ProxyPool<
     this.available += toGrowBy;
   }
 
-  public prune(): void {
+  private _prune(): void {
     if (this._capacity <= this.config.initialSize) {
       return;
     }
@@ -218,6 +229,15 @@ export class ProxyPool<
     this.available = filled - used;
   }
 
+  public prune(): void {
+    if (this.config.prune.strategy !== PruneStrategy.MANUAL) {
+      throw new Error(
+        'Manual pruning requires the prune strategy to be set to `MANUAL`.'
+      );
+    }
+    this._prune();
+  }
+
   public get capacity() {
     return this._capacity;
   }
@@ -251,5 +271,18 @@ export class ProxyPool<
     this.ctxPool[index].data = null as unknown as T;
     this.ctxPool[index].isFree = true;
     this.available += 1;
+
+    if (this.config.prune.strategy === PruneStrategy.ON_USAGE_THRESHOLD) {
+      if (this.available >= this.capacity * this.config.prune.threshold) {
+        if (this.pruneGracePeriodTimeout) {
+          clearTimeout(this.pruneGracePeriodTimeout);
+        }
+        this.pruneGracePeriodTimeout = setTimeout(
+          () => this._prune(),
+          this.config.prune.gracePeriodMs
+        );
+        intervalCleanupRegistry.register(this, this.pruneGracePeriodTimeout);
+      }
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 
-import { ProxyPool, Proxy } from '../out.dev/main.js';
+import { ProxyPool, Proxy, PruneStrategy } from '../out.dev/main.js';
 
 describe('ProxyPool', () => {
   it('should create a pool', ({ expect }) => {
@@ -125,15 +125,10 @@ describe('ProxyPool', () => {
   });
 
   it('should resuse objects', ({ expect }) => {
-    const pool = new ProxyPool<Record<number, number>, [ctx: { foo: number }]>(
-      {
-        set: () => false,
-        get: (data, key) => data.foo * key,
-      },
-      {
-        initialSize: 2,
-      }
-    );
+    const pool = new ProxyPool<Record<number, number>, [ctx: { foo: number }]>({
+      set: () => false,
+      get: (data, key) => data.foo * key,
+    });
 
     const ctx = { foo: 10 };
     const first = pool.get(ctx);
@@ -148,6 +143,84 @@ describe('ProxyPool', () => {
       pool.release(obj);
       pool.release(obj2);
     }
+  });
+
+  it('should prune on usage threshold when using ON_USAGE_THRESHOLD prune strategy', async ({
+    expect,
+  }) => {
+    const pool = new ProxyPool<Record<number, number>, [ctx: { foo: number }]>(
+      {
+        set: () => false,
+        get: (data, key) => data.foo * key,
+      },
+      {
+        initialSize: 1,
+        prune: {
+          strategy: PruneStrategy.ON_USAGE_THRESHOLD,
+          threshold: 0.9,
+          gracePeriodMs: 0,
+        },
+      }
+    );
+
+    const ctx = { foo: 10 };
+    const objects: Proxy<Record<number, number>>[] = [];
+    for (let i = 0; i < 15; i++) {
+      objects.push(pool.get(ctx));
+    }
+    expect(pool.capacity).toBe(17);
+    expect(pool.usedCapacity).toBe(15);
+
+    for (const obj of objects) {
+      pool.release(obj);
+    }
+    expect(pool.capacity).toBe(17);
+    expect(pool.usedCapacity).toBe(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(pool.capacity).toBe(1);
+    expect(pool.usedCapacity).toBe(0);
+  });
+
+  it('should prune on usage threshold when using ON_FIXED_INTERVAL prune strategy', async ({
+    expect,
+  }) => {
+    const pool = new ProxyPool<Record<number, number>, [ctx: { foo: number }]>(
+      {
+        set: () => false,
+        get: (data, key) => data.foo * key,
+      },
+      {
+        initialSize: 1,
+        prune: {
+          strategy: PruneStrategy.ON_FIXED_INTERVAL,
+          intervalMs: 200,
+          graceThreshold: 0.9,
+        },
+      }
+    );
+
+    const ctx = { foo: 10 };
+    const objects: Proxy<Record<number, number>>[] = [];
+    for (let i = 0; i < 15; i++) {
+      objects.push(pool.get(ctx));
+    }
+    expect(pool.capacity).toBe(17);
+    expect(pool.usedCapacity).toBe(15);
+
+    for (const obj of objects) {
+      pool.release(obj);
+    }
+    expect(pool.capacity).toBe(17);
+    expect(pool.usedCapacity).toBe(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(pool.capacity).toBe(17);
+    expect(pool.usedCapacity).toBe(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(pool.capacity).toBe(1);
+    expect(pool.usedCapacity).toBe(0);
   });
 
   /* Was faster on windows, but not on mac
