@@ -118,7 +118,9 @@ export class ProxyPool<
         accessors.set.call(null, ...ctx.data, key as K, value),
     };
 
-    this.reset();
+    if (this.config.initialSize > 0) {
+      this.grow(this.config.initialSize);
+    }
 
     if (this.config.prune.strategy === PruneStrategy.ON_FIXED_INTERVAL) {
       intervalCleanupRegistry.register(
@@ -158,16 +160,6 @@ export class ProxyPool<
       if (this.config.prune.graceThreshold < 0) {
         throw new Error('Grace threshold must be greater than 0');
       }
-    }
-  }
-
-  private reset() {
-    this.pool = [];
-    this.ctxPool = [];
-    this.available = 0;
-    this._capacity = 0;
-    if (this.config.initialSize > 0) {
-      this.grow(this.config.initialSize);
     }
   }
 
